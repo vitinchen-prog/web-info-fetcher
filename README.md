@@ -36,6 +36,12 @@ npm start -- https://example.com
 
 ## Generate A Weekly AI Report Draft
 
+Check source crawl status first:
+
+```bash
+npm run check:sources
+```
+
 ```bash
 npm run report -- --issue 1
 ```
