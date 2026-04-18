@@ -1,0 +1,131 @@
+{
+  "requiredSources": [
+    {
+      "name": "X AI Hot Topics Search",
+      "url": "https://x.com/search?q=AI%20OR%20OpenAI%20OR%20Anthropic%20OR%20DeepMind%20OR%20Gemini%20OR%20Claude%20OR%20GPT&src=typed_query&f=live",
+      "category": "x",
+      "layer": "cross-layer",
+      "note": "X may require manual login. Use this URL to collect weekly hot terms and discussion threads."
+    },
+    {
+      "name": "Sam Altman",
+      "url": "https://x.com/sama",
+      "category": "x",
+      "layer": "cross-layer"
+    },
+    {
+      "name": "Andrej Karpathy",
+      "url": "https://x.com/karpathy",
+      "category": "x",
+      "layer": "extension"
+    },
+    {
+      "name": "Yann LeCun",
+      "url": "https://x.com/ylecun",
+      "category": "x",
+      "layer": "extension"
+    },
+    {
+      "name": "Demis Hassabis",
+      "url": "https://x.com/demishassabis",
+      "category": "x",
+      "layer": "extension"
+    },
+    {
+      "name": "Greg Brockman",
+      "url": "https://x.com/gdb",
+      "category": "x",
+      "layer": "platform"
+    },
+    {
+      "name": "OpenAI on X",
+      "url": "https://x.com/OpenAI",
+      "category": "x",
+      "layer": "extension"
+    },
+    {
+      "name": "Anthropic on X",
+      "url": "https://x.com/AnthropicAI",
+      "category": "x",
+      "layer": "extension"
+    },
+    {
+      "name": "Google DeepMind on X",
+      "url": "https://x.com/GoogleDeepMind",
+      "category": "x",
+      "layer": "extension"
+    },
+    {
+      "name": "OpenAI News",
+      "url": "https://openai.com/news/",
+      "category": "official-blog",
+      "layer": "extension"
+    },
+    {
+      "name": "Google DeepMind Blog",
+      "url": "https://deepmind.google/discover/blog/",
+      "category": "official-blog",
+      "layer": "extension"
+    },
+    {
+      "name": "Anthropic News",
+      "url": "https://www.anthropic.com/news",
+      "category": "official-blog",
+      "layer": "extension"
+    },
+    {
+      "name": "Search Engine Land",
+      "url": "https://searchengineland.com/",
+      "category": "industry-media",
+      "layer": "platform"
+    },
+    {
+      "name": "36Kr AI",
+      "url": "https://36kr.com/search/articles/AI",
+      "category": "china-media",
+      "layer": "product"
+    },
+    {
+      "name": "Huxiu AI",
+      "url": "https://www.huxiu.com/search.html?s=AI",
+      "category": "china-media",
+      "layer": "product"
+    },
+    {
+      "name": "ChatGPT",
+      "url": "https://chatgpt.com/",
+      "category": "model-product",
+      "layer": "product"
+    },
+    {
+      "name": "Claude",
+      "url": "https://claude.ai/",
+      "category": "model-product",
+      "layer": "product"
+    },
+    {
+      "name": "Gemini",
+      "url": "https://gemini.google.com/",
+      "category": "model-product",
+      "layer": "product"
+    },
+    {
+      "name": "Perplexity",
+      "url": "https://www.perplexity.ai/",
+      "category": "model-product",
+      "layer": "product"
+    },
+    {
+      "name": "Kimi",
+      "url": "https://kimi.moonshot.cn/",
+      "category": "model-product",
+      "layer": "product"
+    },
+    {
+      "name": "Doubao",
+      "url": "https://www.doubao.com/",
+      "category": "model-product",
+      "layer": "product"
+    }
+  ]
+}

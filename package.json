@@ -1,22 +1,29 @@
 {
   "name": "web-info-fetcher",
   "version": "1.0.0",
-  "description": "A beginner-friendly CLI tool that fetches basic metadata from a web page.",
+  "description": "A weekly AI report generator that scans required sources, drafts Markdown reports, and can email them.",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "demo": "node src/index.js https://example.com"
+    "demo": "node src/index.js https://example.com",
+    "report": "node src/generate-report.js",
+    "send": "node src/send-email.js"
   },
   "keywords": [
     "web",
     "metadata",
     "fetch",
-    "cli"
+    "cli",
+    "ai-news",
+    "weekly-report"
   ],
   "author": "",
   "license": "MIT",
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "nodemailer": "^8.0.5"
   }
 }
