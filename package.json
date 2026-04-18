@@ -1,0 +1,22 @@
+{
+  "name": "web-info-fetcher",
+  "version": "1.0.0",
+  "description": "A beginner-friendly CLI tool that fetches basic metadata from a web page.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "demo": "node src/index.js https://example.com"
+  },
+  "keywords": [
+    "web",
+    "metadata",
+    "fetch",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
