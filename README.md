@@ -34,6 +34,34 @@ Fetch a page:
 npm start -- https://example.com
 ```
 
+## Browser Collection For Login-Protected Sources
+
+Some required sources block normal script fetching or need login, especially X.
+
+Open Chrome and log in:
+
+```bash
+npm run browser:login
+```
+
+By default this opens X. Log in to X in the browser window. You can also visit OpenAI News, Search Engine Land, ChatGPT, Gemini, and Perplexity in the same browser session if they ask for consent or login.
+
+When you are done, return to the terminal and press Enter. The local browser profile is saved in `.auth/browser-profile`, which is ignored by Git.
+
+Collect browser-only sources:
+
+```bash
+npm run collect:browser
+```
+
+Collect every configured source with the browser:
+
+```bash
+npm run collect:browser -- --all
+```
+
+Browser collection output is written to `data/browser-collections/`, which is also ignored by Git because it may contain logged-in page text.
+
 ## Generate A Weekly AI Report Draft
 
 Check source crawl status first:
