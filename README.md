@@ -82,6 +82,12 @@ npm run report -- --issue 1
 
 If you ran `npm run collect:browser` first, the generator automatically reads the most recent file in `data/browser-collections/` and reuses the logged-in content (title, description, links) for matching sources. Those sources are marked `浏览器已采集` instead of `需人工登录核验`, and the report's data-source line shows how many sources used collected content. Without a collection file, login-protected sources stay as placeholders.
 
+### Article Extraction
+
+For supported sources, the generator parses the listing/blog page and pulls out the actual article headlines and URLs instead of only the homepage title. The summary table shows a `抓到文章数` column, and each layer lists the parsed headlines under `本周文章（自动抓取，需人工复核）`.
+
+Extraction rules are declarative and live in `src/lib/source-rules.js`, keyed by source name. Each rule is a set of URL patterns (e.g. OpenAI posts under `/index/`, 36Kr under `/p/<id>`). To support a new site or fix a changed URL structure, add or adjust a rule there — no per-site parser code is needed. The shared engine is in `src/lib/extract-articles.js`.
+
 This writes a Markdown file to `reports/` using this naming pattern:
 
 ```text
@@ -143,6 +149,14 @@ npm run send -- reports/weekly_ai_report_issue_1_mon_MMDD.md
 ## What To Try Next
 
 1. Add X API collection or browser-assisted X collection.
-2. Add source-specific parsers for official blogs and media sites.
+2. Extend the article-extraction rules in `src/lib/source-rules.js` to cover more sites and capture publish dates/summaries.
 3. Add a review step that turns the draft into a polished final report.
 4. Schedule weekly generation and delivery.
+
+## Tests
+
+```bash
+npm test
+```
+
+This runs the Node built-in test runner against `test/`, including the article-extraction rules.

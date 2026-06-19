@@ -3,7 +3,9 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright-core";
 import { browserOutputDir } from "./collection-store.js";
+import { extractArticles } from "./extract-articles.js";
 import { extractLinks, findMeta, findTitle } from "./html.js";
+import { getArticleRules } from "./source-rules.js";
 
 export const browserProfileDir = path.resolve(".auth/browser-profile");
 export { browserOutputDir };
@@ -90,6 +92,7 @@ export async function collectWithBrowser(page, source, options = {}) {
     title,
     description: findMeta(html, "description") || findMeta(html, "og:description") || "",
     links,
+    articles: extractArticles(html, source.url, getArticleRules(source)),
     text: text.slice(0, options.textLimit ?? 12000)
   };
 }
