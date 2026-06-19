@@ -46,6 +46,12 @@ npm run browser:login
 
 By default this opens X. Log in to X in the browser window. You can also visit OpenAI News, Search Engine Land, ChatGPT, Gemini, and Perplexity in the same browser session if they ask for consent or login.
 
+The collector looks for a local Chrome/Chromium automatically on macOS, Windows, and Linux. If it cannot find one, set `CHROME_PATH` to your browser binary:
+
+```bash
+CHROME_PATH="/path/to/chrome" npm run collect:browser
+```
+
 When you are done, return to the terminal and press Enter. The local browser profile is saved in `.auth/browser-profile`, which is ignored by Git.
 
 Collect browser-only sources:
@@ -73,6 +79,8 @@ npm run check:sources
 ```bash
 npm run report -- --issue 1
 ```
+
+If you ran `npm run collect:browser` first, the generator automatically reads the most recent file in `data/browser-collections/` and reuses the logged-in content (title, description, links) for matching sources. Those sources are marked `浏览器已采集` instead of `需人工登录核验`, and the report's data-source line shows how many sources used collected content. Without a collection file, login-protected sources stay as placeholders.
 
 This writes a Markdown file to `reports/` using this naming pattern:
 

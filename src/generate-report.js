@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { loadLatestBrowserCollection } from "./lib/collection-store.js";
 import { fetchPageInfo } from "./lib/fetch-page-info.js";
 import { citation, formatDateForFilename, formatDateLabel, getCliArg, getWeekRange } from "./lib/report-utils.js";
 
@@ -11,14 +12,39 @@ const fileDate = formatDateForFilename(now);
 const outputDir = path.resolve("reports");
 const outputFile = path.join(outputDir, `weekly_ai_report_issue_${issue}_mon_${fileDate}.md`);
 
+// Prefer content gathered by the logged-in browser collector when it is available.
+const browserCollection = await loadLatestBrowserCollection();
+
+function findBrowserData(source) {
+  return browserCollection.byUrl.get(source.url) || browserCollection.byName.get(source.name) || null;
+}
+
+function fromBrowserData(source, index, collected) {
+  return {
+    ...source,
+    index,
+    status: "browser-collected",
+    title: collected.title || source.name,
+    description: collected.description || (collected.text ? collected.text.slice(0, 200) : ""),
+    links: collected.links || []
+  };
+}
+
 async function collectSource(source, index) {
+  const collected = findBrowserData(source);
+
+  if (collected && collected.status === "ok") {
+    return fromBrowserData(source, index, collected);
+  }
+
   if (source.category === "x") {
     return {
       ...source,
       index,
       status: "manual-review-required",
       title: source.name,
-      description: source.note || "X requires manual login or API access for reliable collection."
+      description: source.note || "X requires manual login or API access for reliable collection.",
+      links: []
     };
   }
 
@@ -44,15 +70,20 @@ async function collectSource(source, index) {
   }
 }
 
+function statusLabel(status) {
+  if (status === "ok") return "已扫描";
+  if (status === "browser-collected") return "浏览器已采集";
+  if (status === "manual-review-required") return "需人工登录核验";
+  return "抓取失败";
+}
+
 function sourceLine(source) {
-  const status = source.status === "ok" ? "已扫描" : source.status === "manual-review-required" ? "需人工登录核验" : "抓取失败";
-  return `${citation(source.index)} ${source.name}. ${status}. ${source.url}`;
+  return `${citation(source.index)} ${source.name}. ${statusLabel(source.status)}. ${source.url}`;
 }
 
 function sourceSummaryTable(collectedSources) {
   const rows = collectedSources.map((source) => {
-    const status = source.status === "ok" ? "已扫描" : source.status === "manual-review-required" ? "需人工登录核验" : "抓取失败";
-    return `| ${source.index} | ${source.name} | ${source.layer} | ${source.category} | ${status} |`;
+    return `| ${source.index} | ${source.name} | ${source.layer} | ${source.category} | ${statusLabel(source.status)} |`;
   });
 
   return [
@@ -70,6 +101,15 @@ function linksForLayer(collectedSources, layer) {
     .join("\n");
 }
 
+function browserCollectionNote() {
+  if (!browserCollection.generatedAt) {
+    return "> 数据来源：本期未发现浏览器采集结果，登录受限信源（如 X、OpenAI News 等）仅做占位，请先运行 `npm run collect:browser` 再生成正式稿。";
+  }
+
+  const usedCount = collectedSources.filter((source) => source.status === "browser-collected").length;
+  return `> 数据来源：已合并浏览器采集结果（采集于 ${browserCollection.generatedAt}），其中 ${usedCount} 个信源使用了登录后采集的内容。`;
+}
+
 function buildReport(collectedSources) {
   const xSources = collectedSources.filter((source) => source.category === "x");
   const officialSources = collectedSources.filter((source) => source.category === "official-blog");
@@ -85,6 +125,8 @@ function buildReport(collectedSources) {
 ## 执行摘要
 
 本报告采用“三层框架”追踪 AI 产业变化：外延层关注全球前沿 AI 技术和模型研究突破，平台层关注重点 AI 平台的产品更新、生态变化与流量格局，产品层关注国内外核心玩家的产品变化、服务优势、商业模式与竞争动态。当前版本已经扫描必选官网与行业媒体首页，并将 X 账号与搜索页列为必审信源；由于 X 常要求登录或 API 权限，最终发布前必须人工补充本周高互动帖子与 KOL 观点。
+
+${browserCollectionNote()}
 
 ${sourceSummaryTable(collectedSources)}
 
