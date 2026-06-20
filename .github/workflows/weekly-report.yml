@@ -1,0 +1,86 @@
+name: Weekly AI Report
+
+# Generates the AI report draft and emails it automatically on Mon/Wed/Fri.
+#
+# NOTE: GitHub only runs scheduled workflows from the repository's DEFAULT
+# branch. This file must be merged into `main` before the cron will fire.
+# Use the "Run workflow" button (workflow_dispatch) to test it from any branch.
+
+on:
+  schedule:
+    # 00:43 UTC == 08:43 Asia/Shanghai, every Monday, Wednesday, Friday.
+    # GitHub delays scheduled jobs most at the top of the hour, so we run at
+    # minute 43 and at 00:xx UTC (off-peak globally) to avoid the busiest window.
+    - cron: "43 0 * * 1,3,5"
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Issue number (optional; defaults to the ISO week number)"
+        required: false
+      send:
+        description: "Send the email after generating (true/false)"
+        required: false
+        default: "true"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-ai-report
+  cancel-in-progress: false
+
+jobs:
+  build-and-send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Determine issue number
+        id: meta
+        run: |
+          ISSUE="${{ github.event.inputs.issue }}"
+          if [ -z "$ISSUE" ]; then
+            ISSUE="$(date -u +%V)"
+          fi
+          echo "issue=$ISSUE" >> "$GITHUB_OUTPUT"
+
+      - name: Generate report draft
+        run: npm run report -- --issue "${{ steps.meta.outputs.issue }}"
+
+      - name: Locate report file
+        id: report
+        run: echo "file=$(ls -t reports/weekly_ai_report_issue_*.md | head -n1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-ai-report-${{ steps.meta.outputs.issue }}
+          path: reports/weekly_ai_report_issue_*.md
+          if-no-files-found: error
+
+      - name: Send email
+        if: ${{ github.event_name == 'schedule' || github.event.inputs.send != 'false' }}
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE || 'true' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          REPORT_FROM: ${{ secrets.REPORT_FROM }}
+          REPORT_TO: ${{ secrets.REPORT_TO }}
+          REPORT_SUBJECT: ${{ secrets.REPORT_SUBJECT }}
+        run: npm run send -- "${{ steps.report.outputs.file }}"

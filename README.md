@@ -133,6 +133,32 @@ Send a report:
 npm run send -- reports/weekly_ai_report_issue_1_mon_MMDD.md
 ```
 
+## Scheduled Delivery (GitHub Actions)
+
+`.github/workflows/weekly-report.yml` generates a report draft and emails it automatically.
+
+- **Schedule:** every **Monday, Wednesday, and Friday** at `00:43 UTC` (08:43 Asia/Shanghai). The cron uses minute `43` at `00:xx UTC` on purpose — GitHub delays scheduled jobs most at the top of the hour and during peak US daytime, so this lands in a low-load window.
+- **Issue number:** defaults to the current ISO week number; override it when running manually.
+- **Output:** the report is uploaded as a workflow artifact and emailed.
+
+### Required setup
+
+1. **Merge this workflow into the default branch (`main`).** GitHub only runs scheduled workflows from the default branch, so the cron will not fire until then. You can still test it from any branch with the **Run workflow** button (`workflow_dispatch`).
+2. Add the SMTP settings as **repository secrets** (Settings → Secrets and variables → Actions):
+
+   | Secret | Required | Default if unset |
+   | --- | --- | --- |
+   | `SMTP_HOST` | yes | — |
+   | `SMTP_USER` | yes | — |
+   | `SMTP_PASS` | yes (Gmail App Password) | — |
+   | `SMTP_PORT` | no | `465` |
+   | `SMTP_SECURE` | no | `true` |
+   | `REPORT_FROM` | no | `SMTP_USER` |
+   | `REPORT_TO` | no | `vitinchen@gmail.com` |
+   | `REPORT_SUBJECT` | no | `本周 AI 资讯周报` |
+
+> The scheduled run fetches sources over the network, so direct-fetch sources are collected live. Login-only sources (X, etc.) remain placeholders because the CI runner has no logged-in browser session — run `npm run collect:browser` locally and commit/share that data if you need them included.
+
 ## Page Metadata Example
 
 ```json
