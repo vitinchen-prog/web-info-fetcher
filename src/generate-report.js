@@ -3,7 +3,7 @@ import path from "node:path";
 import { loadLatestBrowserCollection } from "./lib/collection-store.js";
 import { articlesFromLinks } from "./lib/extract-articles.js";
 import { fetchPageInfo } from "./lib/fetch-page-info.js";
-import { citation, formatDateForFilename, formatDateLabel, getCliArg, getWeekRange } from "./lib/report-utils.js";
+import { citation, formatDateForFilename, formatDateLabel, getCliArg, getWeekRange, isWithinWeek } from "./lib/report-utils.js";
 import { getArticleRules } from "./lib/source-rules.js";
 
 const sources = JSON.parse(await readFile(new URL("../config/sources.json", import.meta.url), "utf8"));
@@ -107,21 +107,34 @@ function sourceSummaryTable(collectedSources) {
   ].join("\n");
 }
 
+function formatArticleLine({ source, article }) {
+  const tags = [];
+  if (article.date) {
+    tags.push(isWithinWeek(article.date, week) ? `🆕本周 ${article.date}` : article.date);
+  } else {
+    tags.push("日期待确认");
+  }
+
+  const meta = `（${tags.join("，")}）`;
+  const summary = article.summary ? `\n  ${article.summary}` : "";
+  return `- ${article.title} ${meta} ${citation(source.index)}\n  ${article.url}${summary}`;
+}
+
 // Render the best-available references for a layer: prefer parsed articles
-// (real headlines pulled from listing pages), fall back to raw links.
+// (real headlines pulled from listing pages), fall back to raw links. Articles
+// are sorted with this week's items first, then by date descending.
 function linksForLayer(collectedSources, layer) {
   const layerSources = collectedSources.filter(
     (source) => source.layer === layer || source.layer === "cross-layer"
   );
 
-  const articleLines = layerSources.flatMap((source) =>
-    (source.articles || [])
-      .slice(0, 4)
-      .map((article) => `- ${article.title} ${citation(source.index)}\n  ${article.url}`)
+  const entries = layerSources.flatMap((source) =>
+    (source.articles || []).map((article) => ({ source, article }))
   );
 
-  if (articleLines.length > 0) {
-    return articleLines.slice(0, 10).join("\n");
+  if (entries.length > 0) {
+    entries.sort((a, b) => articleRank(b.article) - articleRank(a.article));
+    return entries.slice(0, 10).map(formatArticleLine).join("\n");
   }
 
   return layerSources
@@ -130,13 +143,36 @@ function linksForLayer(collectedSources, layer) {
     .join("\n");
 }
 
+// Sort key: this-week articles rank highest, then more recent dates, then
+// undated articles last.
+function articleRank(article) {
+  if (article.date && isWithinWeek(article.date, week)) {
+    return 3_000_000_000 + new Date(`${article.date}T00:00:00`).getTime();
+  }
+  if (article.date) {
+    return new Date(`${article.date}T00:00:00`).getTime();
+  }
+  return -1;
+}
+
+function thisWeekArticleCount() {
+  return collectedSources.reduce(
+    (total, source) =>
+      total + (source.articles || []).filter((article) => isWithinWeek(article.date, week)).length,
+    0
+  );
+}
+
 function browserCollectionNote() {
+  const weekly = thisWeekArticleCount();
+  const weeklyNote = `本周期（${week.label}）内自动识别到 ${weekly} 篇带日期的新文章。`;
+
   if (!browserCollection.generatedAt) {
-    return "> 数据来源：本期未发现浏览器采集结果，登录受限信源（如 X、OpenAI News 等）仅做占位，请先运行 `npm run collect:browser` 再生成正式稿。";
+    return `> 数据来源：本期未发现浏览器采集结果，登录受限信源（如 X、OpenAI News 等）仅做占位，请先运行 \`npm run collect:browser\` 再生成正式稿。${weeklyNote}`;
   }
 
   const usedCount = collectedSources.filter((source) => source.status === "browser-collected").length;
-  return `> 数据来源：已合并浏览器采集结果（采集于 ${browserCollection.generatedAt}），其中 ${usedCount} 个信源使用了登录后采集的内容。`;
+  return `> 数据来源：已合并浏览器采集结果（采集于 ${browserCollection.generatedAt}），其中 ${usedCount} 个信源使用了登录后采集的内容。${weeklyNote}`;
 }
 
 function buildReport(collectedSources) {

@@ -43,3 +43,19 @@ export function getWeekRange(date) {
 export function citation(index) {
   return `[${index}]`;
 }
+
+// Returns true when an ISO YYYY-MM-DD date falls within the given week range
+// (inclusive). Unknown/empty dates return false.
+export function isWithinWeek(isoDate, week) {
+  if (!isoDate) return false;
+
+  const date = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const start = new Date(week.monday);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(week.sunday);
+  end.setHours(23, 59, 59, 999);
+
+  return date >= start && date <= end;
+}

@@ -86,6 +86,8 @@ If you ran `npm run collect:browser` first, the generator automatically reads th
 
 For supported sources, the generator parses the listing/blog page and pulls out the actual article headlines and URLs instead of only the homepage title. The summary table shows a `抓到文章数` column, and each layer lists the parsed headlines under `本周文章（自动抓取，需人工复核）`.
 
+Where possible the engine also extracts each article's **publish date** (from `<time datetime>`, the URL, or ISO / Chinese `YYYY年M月D日` / English `Month D, YYYY` text) and a short **summary** (the anchor `title` attribute or a nearby paragraph). Articles are sorted with the current week first, items inside the covered week are tagged `🆕本周`, undated items are marked `日期待确认`, and the data-source line reports how many dated articles fall inside the week.
+
 Extraction rules are declarative and live in `src/lib/source-rules.js`, keyed by source name. Each rule is a set of URL patterns (e.g. OpenAI posts under `/index/`, 36Kr under `/p/<id>`). To support a new site or fix a changed URL structure, add or adjust a rule there — no per-site parser code is needed. The shared engine is in `src/lib/extract-articles.js`.
 
 This writes a Markdown file to `reports/` using this naming pattern:

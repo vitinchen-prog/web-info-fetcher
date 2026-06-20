@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { articlesFromLinks, extractArticles } from "../src/lib/extract-articles.js";
+import { articlesFromLinks, extractArticles, findDate } from "../src/lib/extract-articles.js";
 import { getArticleRules } from "../src/lib/source-rules.js";
+import { isWithinWeek } from "../src/lib/report-utils.js";
 
 test("extracts OpenAI news posts and ignores nav links", () => {
   const html = `
@@ -16,10 +17,8 @@ test("extracts OpenAI news posts and ignores nav links", () => {
   const articles = extractArticles(html, "https://openai.com/news/", rules);
 
   assert.equal(articles.length, 2);
-  assert.deepEqual(articles[0], {
-    title: "Introducing our new model",
-    url: "https://openai.com/index/new-model-release/"
-  });
+  assert.equal(articles[0].title, "Introducing our new model");
+  assert.equal(articles[0].url, "https://openai.com/index/new-model-release/");
   assert.equal(articles[1].title, "A safety update for developers");
 });
 
@@ -76,4 +75,37 @@ test("returns nothing when there are no rules", () => {
   const html = `<a href="/anything">A link</a>`;
   assert.deepEqual(extractArticles(html, "https://example.com", null), []);
   assert.deepEqual(articlesFromLinks([{ text: "A link", href: "https://example.com/x" }], null), []);
+});
+
+test("findDate normalises the supported date formats", () => {
+  assert.equal(findDate('<time datetime="2026-06-18T09:00:00Z">Jun 18</time>'), "2026-06-18");
+  assert.equal(findDate("", "https://site.com/2026/06/05/some-slug"), "2026-06-05");
+  assert.equal(findDate("Published 2026-6-7 by staff"), "2026-06-07");
+  assert.equal(findDate("发布于 2026年6月3日"), "2026-06-03");
+  assert.equal(findDate("Posted June 1, 2026"), "2026-06-01");
+  assert.equal(findDate("no date here"), null);
+});
+
+test("extractArticles attaches date and summary from surrounding markup", () => {
+  const html = `
+    <article>
+      <a href="/index/launch-day/">Launch day recap</a>
+      <time datetime="2026-06-18">June 18, 2026</time>
+      <p>A detailed recap of everything announced on launch day for developers.</p>
+    </article>
+  `;
+  const rules = getArticleRules({ name: "OpenAI News" });
+  const [article] = extractArticles(html, "https://openai.com/news/", rules);
+
+  assert.equal(article.date, "2026-06-18");
+  assert.match(article.summary, /detailed recap/);
+});
+
+test("isWithinWeek bounds dates inclusively", () => {
+  const week = { monday: new Date("2026-06-15T00:00:00"), sunday: new Date("2026-06-21T00:00:00") };
+  assert.equal(isWithinWeek("2026-06-15", week), true);
+  assert.equal(isWithinWeek("2026-06-21", week), true);
+  assert.equal(isWithinWeek("2026-06-14", week), false);
+  assert.equal(isWithinWeek("2026-06-22", week), false);
+  assert.equal(isWithinWeek(null, week), false);
 });
