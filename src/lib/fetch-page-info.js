@@ -1,6 +1,7 @@
+import { extractArticles } from "./extract-articles.js";
 import { extractLinks, findMeta, findTitle } from "./html.js";
 
-export async function fetchPageInfo(url) {
+export async function fetchPageInfo(url, options = {}) {
   let parsedUrl;
 
   try {
@@ -39,6 +40,7 @@ export async function fetchPageInfo(url) {
     ogTitle: findMeta(html, "og:title"),
     ogDescription: findMeta(html, "og:description"),
     ogImage: findMeta(html, "og:image"),
-    links: extractLinks(html, parsedUrl.href)
+    links: extractLinks(html, parsedUrl.href),
+    articles: extractArticles(html, parsedUrl.href, options.articleRules)
   };
 }

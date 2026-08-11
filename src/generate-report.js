@@ -1,7 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { loadLatestBrowserCollection } from "./lib/collection-store.js";
+import { articlesFromLinks } from "./lib/extract-articles.js";
 import { fetchPageInfo } from "./lib/fetch-page-info.js";
-import { citation, formatDateForFilename, formatDateLabel, getCliArg, getWeekRange } from "./lib/report-utils.js";
+import { citation, formatDateForFilename, formatDateLabel, getCliArg, getWeekRange, isWithinWeek } from "./lib/report-utils.js";
+import { getArticleRules } from "./lib/source-rules.js";
 
 const sources = JSON.parse(await readFile(new URL("../config/sources.json", import.meta.url), "utf8"));
 const issue = getCliArg("issue", "1");
@@ -11,26 +14,61 @@ const fileDate = formatDateForFilename(now);
 const outputDir = path.resolve("reports");
 const outputFile = path.join(outputDir, `weekly_ai_report_issue_${issue}_mon_${fileDate}.md`);
 
+// Prefer content gathered by the logged-in browser collector when it is available.
+const browserCollection = await loadLatestBrowserCollection();
+
+function findBrowserData(source) {
+  return browserCollection.byUrl.get(source.url) || browserCollection.byName.get(source.name) || null;
+}
+
+function fromBrowserData(source, index, collected) {
+  const rules = getArticleRules(source);
+  // Newer collections store extracted articles; older ones only have links,
+  // so derive articles from the links in that case.
+  const articles = collected.articles && collected.articles.length > 0
+    ? collected.articles
+    : articlesFromLinks(collected.links || [], rules);
+
+  return {
+    ...source,
+    index,
+    status: "browser-collected",
+    title: collected.title || source.name,
+    description: collected.description || (collected.text ? collected.text.slice(0, 200) : ""),
+    links: collected.links || [],
+    articles
+  };
+}
+
 async function collectSource(source, index) {
+  const collected = findBrowserData(source);
+
+  if (collected && collected.status === "ok") {
+    return fromBrowserData(source, index, collected);
+  }
+
   if (source.category === "x") {
     return {
       ...source,
       index,
       status: "manual-review-required",
       title: source.name,
-      description: source.note || "X requires manual login or API access for reliable collection."
+      description: source.note || "X requires manual login or API access for reliable collection.",
+      links: [],
+      articles: []
     };
   }
 
   try {
-    const info = await fetchPageInfo(source.url);
+    const info = await fetchPageInfo(source.url, { articleRules: getArticleRules(source) });
     return {
       ...source,
       index,
       status: "ok",
       title: info.ogTitle || info.title || source.name,
       description: info.ogDescription || info.description || "",
-      links: info.links || []
+      links: info.links || [],
+      articles: info.articles || []
     };
   } catch (error) {
     return {
@@ -39,35 +77,102 @@ async function collectSource(source, index) {
       status: "fetch-failed",
       title: source.name,
       description: error.message,
-      links: []
+      links: [],
+      articles: []
     };
   }
 }
 
+function statusLabel(status) {
+  if (status === "ok") return "已扫描";
+  if (status === "browser-collected") return "浏览器已采集";
+  if (status === "manual-review-required") return "需人工登录核验";
+  return "抓取失败";
+}
+
 function sourceLine(source) {
-  const status = source.status === "ok" ? "已扫描" : source.status === "manual-review-required" ? "需人工登录核验" : "抓取失败";
-  return `${citation(source.index)} ${source.name}. ${status}. ${source.url}`;
+  return `${citation(source.index)} ${source.name}. ${statusLabel(source.status)}. ${source.url}`;
 }
 
 function sourceSummaryTable(collectedSources) {
   const rows = collectedSources.map((source) => {
-    const status = source.status === "ok" ? "已扫描" : source.status === "manual-review-required" ? "需人工登录核验" : "抓取失败";
-    return `| ${source.index} | ${source.name} | ${source.layer} | ${source.category} | ${status} |`;
+    const articleCount = (source.articles || []).length;
+    return `| ${source.index} | ${source.name} | ${source.layer} | ${source.category} | ${statusLabel(source.status)} | ${articleCount} |`;
   });
 
   return [
-    "| 引用 | 信源 | 层级 | 类型 | 状态 |",
-    "| --- | --- | --- | --- | --- |",
+    "| 引用 | 信源 | 层级 | 类型 | 状态 | 抓到文章数 |",
+    "| --- | --- | --- | --- | --- | ---: |",
     ...rows
   ].join("\n");
 }
 
+function formatArticleLine({ source, article }) {
+  const tags = [];
+  if (article.date) {
+    tags.push(isWithinWeek(article.date, week) ? `🆕本周 ${article.date}` : article.date);
+  } else {
+    tags.push("日期待确认");
+  }
+
+  const meta = `（${tags.join("，")}）`;
+  const summary = article.summary ? `\n  ${article.summary}` : "";
+  return `- ${article.title} ${meta} ${citation(source.index)}\n  ${article.url}${summary}`;
+}
+
+// Render the best-available references for a layer: prefer parsed articles
+// (real headlines pulled from listing pages), fall back to raw links. Articles
+// are sorted with this week's items first, then by date descending.
 function linksForLayer(collectedSources, layer) {
-  return collectedSources
-    .filter((source) => source.layer === layer || source.layer === "cross-layer")
+  const layerSources = collectedSources.filter(
+    (source) => source.layer === layer || source.layer === "cross-layer"
+  );
+
+  const entries = layerSources.flatMap((source) =>
+    (source.articles || []).map((article) => ({ source, article }))
+  );
+
+  if (entries.length > 0) {
+    entries.sort((a, b) => articleRank(b.article) - articleRank(a.article));
+    return entries.slice(0, 10).map(formatArticleLine).join("\n");
+  }
+
+  return layerSources
     .flatMap((source) => (source.links || []).slice(0, 3).map((link) => `- ${link.text} ${citation(source.index)}\n  ${link.href}`))
     .slice(0, 8)
     .join("\n");
+}
+
+// Sort key: this-week articles rank highest, then more recent dates, then
+// undated articles last.
+function articleRank(article) {
+  if (article.date && isWithinWeek(article.date, week)) {
+    return 3_000_000_000 + new Date(`${article.date}T00:00:00`).getTime();
+  }
+  if (article.date) {
+    return new Date(`${article.date}T00:00:00`).getTime();
+  }
+  return -1;
+}
+
+function thisWeekArticleCount() {
+  return collectedSources.reduce(
+    (total, source) =>
+      total + (source.articles || []).filter((article) => isWithinWeek(article.date, week)).length,
+    0
+  );
+}
+
+function browserCollectionNote() {
+  const weekly = thisWeekArticleCount();
+  const weeklyNote = `本周期（${week.label}）内自动识别到 ${weekly} 篇带日期的新文章。`;
+
+  if (!browserCollection.generatedAt) {
+    return `> 数据来源：本期未发现浏览器采集结果，登录受限信源（如 X、OpenAI News 等）仅做占位，请先运行 \`npm run collect:browser\` 再生成正式稿。${weeklyNote}`;
+  }
+
+  const usedCount = collectedSources.filter((source) => source.status === "browser-collected").length;
+  return `> 数据来源：已合并浏览器采集结果（采集于 ${browserCollection.generatedAt}），其中 ${usedCount} 个信源使用了登录后采集的内容。${weeklyNote}`;
 }
 
 function buildReport(collectedSources) {
@@ -86,6 +191,8 @@ function buildReport(collectedSources) {
 
 本报告采用“三层框架”追踪 AI 产业变化：外延层关注全球前沿 AI 技术和模型研究突破，平台层关注重点 AI 平台的产品更新、生态变化与流量格局，产品层关注国内外核心玩家的产品变化、服务优势、商业模式与竞争动态。当前版本已经扫描必选官网与行业媒体首页，并将 X 账号与搜索页列为必审信源；由于 X 常要求登录或 API 权限，最终发布前必须人工补充本周高互动帖子与 KOL 观点。
 
+${browserCollectionNote()}
+
 ${sourceSummaryTable(collectedSources)}
 
 ## 一、外延层：全球前沿 AI 技术
@@ -96,7 +203,7 @@ ${sourceSummaryTable(collectedSources)}
 
 请在最终稿中围绕以下问题深挖：是否有新模型、新 benchmark、新安全评估、新多模态能力、新 agent 能力或推理成本下降信号。已扫描的官方信源包括 OpenAI News、Google DeepMind Blog 和 Anthropic News。${officialSources.map((source) => citation(source.index)).join("")}
 
-候选链接：
+本周文章（自动抓取，需人工复核）：
 
 ${linksForLayer(collectedSources, "extension") || "- 待从原文和 X 讨论中补充。"}
 
@@ -114,7 +221,7 @@ ${linksForLayer(collectedSources, "extension") || "- 待从原文和 X 讨论中
 
 平台层重点关注搜索产品、AI Overviews/AI Mode、浏览器入口、开发者平台、API 价格、插件/应用生态、分发入口和广告变现方式。Search Engine Land 作为搜索生态必选信源，应与 OpenAI、Google、Anthropic 等平台官方信息交叉验证。${platformSources.map((source) => citation(source.index)).join("")}
 
-候选链接：
+本周文章（自动抓取，需人工复核）：
 
 ${linksForLayer(collectedSources, "platform") || "- 待从平台公告、搜索行业媒体和流量数据中补充。"}
 
@@ -132,7 +239,7 @@ ${linksForLayer(collectedSources, "platform") || "- 待从平台公告、搜索�
 
 产品层需要同时覆盖海外核心玩家和国内核心玩家。海外侧重点包括订阅定价、模型默认能力、企业功能、搜索/浏览/agent 能力；国内侧重点包括 36Kr、虎嗅报道中的产品迭代、商业化进展、用户数据、渠道合作和监管环境。${productSources.map((source) => citation(source.index)).join("")}
 
-候选链接：
+本周文章（自动抓取，需人工复核）：
 
 ${linksForLayer(collectedSources, "product") || "- 待从产品官网、36Kr、虎嗅和公开数据中补充。"}
 

@@ -11,7 +11,8 @@
     "collect:browser": "node src/collect-browser.js",
     "check:sources": "node src/check-sources.js",
     "report": "node src/generate-report.js",
-    "send": "node src/send-email.js"
+    "send": "node src/send-email.js",
+    "test": "node --test"
   },
   "keywords": [
     "web",
