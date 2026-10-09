@@ -159,6 +159,28 @@ npm run send -- reports/weekly_ai_report_issue_1_mon_MMDD.md
 
 > The scheduled run fetches sources over the network, so direct-fetch sources are collected live. Login-only sources (X, etc.) remain placeholders because the CI runner has no logged-in browser session — run `npm run collect:browser` locally and commit/share that data if you need them included.
 
+### Prevent automatic inactivity suspension
+
+GitHub automatically disables scheduled workflows in public repositories after
+60 days without repository activity, even when scheduled runs keep succeeding.
+
+`.github/workflows/keepalive.yml` checks the default branch every Monday at
+04:17 UTC. If the latest commit is at least 30 days old, it updates
+`.github/keepalive` with a UTC timestamp and pushes a maintenance commit.
+The first run initializes that file to verify write permission. This workflow
+also runs when its own configuration changes and can be run manually.
+
+Only the keepalive job has `contents: write`; it uses the built-in
+`GITHUB_TOKEN`, does not access SMTP secrets, and does not generate or email
+reports. It never force-pushes. The report schedule and contents are unchanged.
+
+If a future branch rule prevents direct pushes, the keepalive job will fail
+visibly and its approach will need to be adjusted. If the report workflow has
+already been disabled, re-enable **Weekly AI Report** on its Actions page
+(or run `gh workflow enable weekly-report.yml --repo vitinchen-prog/web-info-fetcher`).
+
+Reference: [GitHub scheduled-workflow inactivity policy](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows).
+
 ## Page Metadata Example
 
 ```json
