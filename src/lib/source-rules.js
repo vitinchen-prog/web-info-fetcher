@@ -1,47 +1,40 @@
-// Per-source article-extraction rules, keyed by the source name used in
-// config/sources.json. Patterns are based on each site's published article URL
-// structure. `include`/`exclude` are matched against the link pathname and href.
-//
-// Keeping these declarative (rather than hand-written parsers per site) means a
-// single extraction engine handles every source, and adjusting a site only
-// means tweaking a regex here.
+// Hosts are exact except for a leading www. alias; path rules never match a
+// query-string lookalike. Keep both current and historical publisher paths.
 const articleRules = {
-  "OpenAI News": {
-    // Posts live at openai.com/index/<slug>/
-    include: /\/index\/[^/]+/i,
+  'OpenAI News': {
+    hosts: ['openai.com'],
+    include: /^\/index\/[^/]+\/?$/i,
     limit: 8
   },
-  "Google DeepMind Blog": {
-    // Posts live at deepmind.google/discover/blog/<slug>/
-    include: /\/discover\/blog\/[^/]+/i,
-    exclude: /\/discover\/blog\/?$/i,
+  'Google DeepMind Blog': {
+    hosts: ['deepmind.google'],
+    include: /^\/(?:discover\/)?blog\/[^/]+\/?$/i,
     limit: 8
   },
-  "Anthropic News": {
-    // Posts live at anthropic.com/news/<slug>
-    include: /\/news\/[^/]+/i,
-    exclude: /\/news\/?$/i,
+  'Anthropic News': {
+    hosts: ['anthropic.com'],
+    include: /^\/news\/[^/]+\/?$/i,
     limit: 8
   },
-  "Search Engine Land": {
-    // Articles end with a numeric id, e.g. /some-headline-455123/
-    include: /-\d{4,}\/?$/i,
+  'Search Engine Land': {
+    hosts: ['searchengineland.com'],
+    include: /^\/[^/]+-\d{4,}\/?$/i,
     limit: 8
   },
-  "36Kr AI": {
-    // Articles live at 36kr.com/p/<id>
-    include: /\/p\/\d+/i,
+  '36Kr AI': {
+    hosts: ['36kr.com'],
+    include: /^\/p\/\d+\/?$/i,
     limit: 8
   },
-  "Huxiu AI": {
-    // Articles live at huxiu.com/article/<id>.html
-    include: /\/article\/\d+/i,
+  'Huxiu AI': {
+    hosts: ['huxiu.com'],
+    include: /^\/article\/\d+(?:\.html)?\/?$/i,
     limit: 8
   }
 };
 
 export function getArticleRules(source) {
-  return articleRules[source.name] || null;
+  return articleRules[source?.name] || null;
 }
 
 export { articleRules };

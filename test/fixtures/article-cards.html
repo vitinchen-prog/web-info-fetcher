@@ -1,0 +1,17 @@
+<!doctype html><html><body>
+<nav><a href="/index/navigation-post/">Navigation should not become news</a></nav>
+<header><a href="/index/header-post/">Header should not become news</a></header>
+<script>const example = '<a href="/index/script-post/">Script template should not become news</a>';</script>
+<style>.fake:after { content:'<a href="/index/style-post/">Style template should not become news</a>'; }</style>
+<code><a href="/index/code-post/">Code example should not become news</a></code>
+<template><a href="/index/template-post/">Template should not become news</a></template>
+<main>
+  <article><a href="/index/undated/">An undated research announcement</a></article>
+  <article><a href="/index/dated/?utm_source=news&amp;utm_medium=email#details"><h2>A dated model announcement</h2></a><time datetime="2026-11-06T08:00:00Z">November 6, 2026</time><p>This source describes a new model with verified details for developers.</p></article>
+  <article><a href="/index/dated/#duplicate">A dated model announcement duplicate</a></article>
+  <article><a href="https://evil.example/index/foreign/">A foreign article must not pass</a></article>
+  <article><a href="javascript:alert('/index/example/')">A javascript article must not pass</a></article>
+  <article><a href="https://openai.com.evil.example/index/spoof/">A spoofed source must not pass</a></article>
+</main>
+<footer><a href="/index/footer-post/">Footer should not become news</a></footer>
+</body></html>

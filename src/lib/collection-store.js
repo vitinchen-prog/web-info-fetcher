@@ -1,47 +1,28 @@
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
+import { readFile, readdir } from 'node:fs/promises';
+import path from 'node:path';
+export const browserOutputDir = path.resolve('data/browser-collections');
+const emptyCollection = (warnings=[]) => ({generatedAt:null,file:null,byName:new Map(),byUrl:new Map(),warnings});
 
-export const browserOutputDir = path.resolve("data/browser-collections");
-
-const emptyCollection = () => ({ generatedAt: null, file: null, byName: new Map(), byUrl: new Map() });
-
-// Load the most recent browser collection file (if any) and index its results by
-// source name and URL so the report generator can reuse logged-in content.
-// Intentionally free of any browser/playwright imports so the report generator
-// can run without those dependencies installed.
-export async function loadLatestBrowserCollection() {
+// Stored dates, not MMDD filenames, determine freshness across year boundaries.
+export async function loadLatestBrowserCollection({directory=browserOutputDir}={}) {
   let files;
-
-  try {
-    files = await readdir(browserOutputDir);
-  } catch {
-    return emptyCollection();
+  try { files=await readdir(directory); }
+  catch(error) { return emptyCollection(error.code==='ENOENT'?[]:[`浏览器缓存无法读取：${error.message}`]); }
+  const warnings=[], collections=[];
+  for(const file of files.filter(f=>f.startsWith('browser_collection_') && f.endsWith('.json'))) {
+    try {
+      const parsed=JSON.parse(await readFile(path.join(directory,file),'utf8'));
+      if(!Array.isArray(parsed.results) || !Number.isFinite(Date.parse(parsed.generatedAt))) throw Error('缺少有效采集时间或 results');
+      collections.push({parsed,file});
+    } catch(error) { warnings.push(`浏览器缓存 ${file} 无法使用：${error.message}`); }
   }
-
-  const collectionFiles = files
-    .filter((file) => file.startsWith("browser_collection_") && file.endsWith(".json"))
-    .sort();
-
-  if (collectionFiles.length === 0) {
-    return emptyCollection();
+  collections.sort((a,b)=>Date.parse(b.parsed.generatedAt)-Date.parse(a.parsed.generatedAt));
+  if(!collections.length) return emptyCollection(warnings);
+  const {parsed,file}=collections[0], byName=new Map(),byUrl=new Map();
+  for(const result of parsed.results) {
+    if(!result || typeof result!=='object') continue;
+    if(result.name) byName.set(result.name,result);
+    if(result.url) byUrl.set(result.url,result);
   }
-
-  const latest = collectionFiles[collectionFiles.length - 1];
-  let parsed;
-
-  try {
-    parsed = JSON.parse(await readFile(path.join(browserOutputDir, latest), "utf8"));
-  } catch {
-    return emptyCollection();
-  }
-
-  const byName = new Map();
-  const byUrl = new Map();
-
-  for (const result of parsed.results || []) {
-    if (result.name) byName.set(result.name, result);
-    if (result.url) byUrl.set(result.url, result);
-  }
-
-  return { generatedAt: parsed.generatedAt || null, file: latest, byName, byUrl };
+  return {generatedAt:parsed.generatedAt,file,byName,byUrl,warnings};
 }

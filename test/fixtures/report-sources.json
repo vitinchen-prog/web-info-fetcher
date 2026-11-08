@@ -1,0 +1,16 @@
+{
+  "sources": [
+    {
+      "name": "OpenAI News", "url": "https://openai.com/news/", "category": "official-blog", "layer": "extension", "index": 1, "status": "ok",
+      "articles": [{"title":"[Fixture] Example model evaluation released", "url":"https://openai.com/index/fixture-model-evaluation/", "date":"2026-11-04", "dateEvidence":{"kind":"time","value":"2026-11-04"}, "summary":"Synthetic sample: a model evaluation describes test conditions and limitations.", "summaryEvidence":{"kind":"paragraph","value":"Synthetic sample: a model evaluation describes test conditions and limitations."}}]
+    },
+    {
+      "name": "Anthropic News", "url": "https://www.anthropic.com/news", "category": "official-blog", "layer": "product", "index": 2, "status": "ok",
+      "articles": [{"title":"[Fixture] Example enterprise API pricing update", "url":"https://www.anthropic.com/news/fixture-pricing", "date":"2026-11-05", "dateEvidence":{"kind":"time","value":"2026-11-05"}, "summary":"Synthetic sample: API pricing changes depend on usage tier and plan conditions.", "summaryEvidence":{"kind":"paragraph","value":"Synthetic sample: API pricing changes depend on usage tier and plan conditions."}}]
+    },
+    {
+      "name": "Search Engine Land", "url": "https://searchengineland.com/", "category": "industry-media", "layer": "platform", "index": 3, "status": "ok",
+      "articles": [{"title":"[Fixture] Example AI search rollout changes", "url":"https://searchengineland.com/fixture-search-rollout-999999/", "date":"2026-11-06", "dateEvidence":{"kind":"time","value":"2026-11-06"}, "summary":"Synthetic sample: an AI search rollout describes availability in selected regions.", "summaryEvidence":{"kind":"paragraph","value":"Synthetic sample: an AI search rollout describes availability in selected regions."}}]
+    }
+  ]
+}

@@ -4,3 +4,6 @@ node_modules/
 .auth/
 data/browser-collections/
 npm-debug.log*
+data/delivery-history.json*
+reports/*.manifest.json
+reports/latest-report.json

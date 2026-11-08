@@ -1,0 +1,20 @@
+{
+  "quality": {
+    "minEvents": 3,
+    "minDistinctSources": 2,
+    "minSuccessfulSourceRatio": 0.5,
+    "maxReportAgeHours": 24,
+    "maxBrowserAgeHours": 72
+  },
+  "scoring": {
+    "topics": [
+      {"name": "模型与研究", "keywords": ["model", "gpt", "claude", "gemini", "模型", "研究"], "weight": 1},
+      {"name": "搜索与分发", "keywords": ["search", "seo", "geo", "搜索", "分发"], "weight": 1},
+      {"name": "产品与商业化", "keywords": ["api", "pricing", "enterprise", "产品", "价格", "商业化"], "weight": 1}
+    ],
+    "weights": {"recency": 3, "officialSource": 2, "multiSource": 2, "topic": 1},
+    "minScore": 0,
+    "maxEvents": 30
+  },
+  "analysis": {"mode": "evidence-only"}
+}

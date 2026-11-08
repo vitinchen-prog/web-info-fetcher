@@ -1,11 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { browserOutputDir, collectWithBrowser, launchPersistentBrowser } from "./lib/browser.js";
-import { formatDateForFilename } from "./lib/report-utils.js";
 
 const sources = JSON.parse(await readFile(new URL("../config/sources.json", import.meta.url), "utf8"));
 const mode = process.argv.includes("--all") ? "all" : "browser";
-const today = formatDateForFilename(new Date());
+const today = new Date().toISOString().replace(/[:.]/g, '-');
 const outputFile = path.join(browserOutputDir, `browser_collection_${today}.json`);
 
 function shouldUseBrowser(source) {

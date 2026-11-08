@@ -1,49 +1,15 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import nodemailer from "nodemailer";
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { deliverReport } from './lib/delivery.js';
+import { getCliArg } from './lib/report-utils.js';
 
-const file = process.argv[2];
-
-if (!file) {
-  console.log("Usage: npm run send -- <report-file>");
-  process.exit(1);
+export async function main(args=process.argv.slice(2)) {
+  const file=args[0];
+  if(!file || file.startsWith('--')) throw Error('Usage: npm run send -- <report-file> [--dry-run] [--history <file>] [--policy <file>]');
+  const policy=JSON.parse(await readFile(getCliArg('policy',new URL('../config/report-policy.json',import.meta.url),args),'utf8'));
+  const result=await deliverReport({reportPath:path.resolve(file),historyPath:path.resolve(getCliArg('history','data/delivery-history.json',args)),policy,dryRun:args.includes('--dry-run')});
+  console.log(result.status==='sent'?`Report accepted by SMTP for ${result.to}; inbox delivery is not confirmed`:`Dry run passed for ${result.events} events; no email sent and no history changed`);
+  return result;
 }
-
-const requiredEnv = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS"];
-const missing = requiredEnv.filter((name) => !process.env[name]);
-
-if (missing.length > 0) {
-  console.error(`Missing email environment variables: ${missing.join(", ")}`);
-  console.error("Copy .env.example to .env, fill it in, then export the variables before sending.");
-  process.exit(1);
-}
-
-const reportPath = path.resolve(file);
-const report = await readFile(reportPath, "utf8");
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: process.env.SMTP_SECURE === "true",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
-
-const to = process.env.REPORT_TO || "vitinchen@gmail.com";
-const from = process.env.REPORT_FROM || process.env.SMTP_USER;
-
-await transporter.sendMail({
-  from,
-  to,
-  subject: process.env.REPORT_SUBJECT || "本周 AI 资讯周报",
-  text: report,
-  attachments: [
-    {
-      filename: path.basename(reportPath),
-      path: reportPath
-    }
-  ]
-});
-
-console.log(`Report sent to ${to}`);
+if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) main().catch(error=>{console.error(error.message);process.exitCode=1;});
